@@ -1,0 +1,38 @@
+{
+	"ImportPath": "github.com/lfittl/cerebro",
+	"GoVersion": "go1.4.2",
+	"Deps": [
+		{
+			"ImportPath": "github.com/coreos/etcd/etcdserver/etcdhttp/httptypes",
+			"Comment": "v2.0.4-401-g25f1fec",
+			"Rev": "25f1feceb5e13da68a35ee552069f86d18d63fee"
+		},
+		{
+			"ImportPath": "github.com/coreos/etcd/pkg/types",
+			"Comment": "v2.0.4-401-g25f1fec",
+			"Rev": "25f1feceb5e13da68a35ee552069f86d18d63fee"
+		},
+		{
+			"ImportPath": "github.com/coreos/go-etcd/etcd",
+			"Comment": "v0.4.6-14-g6c0c031",
+			"Rev": "6c0c031546a10bafb185c792b0b05cf7dccd2754"
+		},
+		{
+			"ImportPath": "github.com/gin-gonic/gin",
+			"Comment": "v0.6",
+			"Rev": "e2fa89777e344782ef5d31929f095f4589c35dcc"
+		},
+		{
+			"ImportPath": "github.com/julienschmidt/httprouter",
+			"Rev": "b59a38004596b696aca7aa2adccfa68760864d86"
+		},
+		{
+			"ImportPath": "github.com/mattn/go-colorable",
+			"Rev": "d67e0b7d1797975196499f79bcc322c08b9f218b"
+		},
+		{
+			"ImportPath": "github.com/samalba/dockerclient",
+			"Rev": "578f4b4d729fb23a8ffade2f7e3f335a964fea0c"
+		}
+	]
+}
