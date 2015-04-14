@@ -42,7 +42,7 @@ func DockerClient() *dockerclient.DockerClient {
 func DockerHandler(instanceUp chan<- dockerManagedInstance) {
   dockerClient := DockerClient()
 
-  ticker := time.NewTicker(time.Millisecond * 1000)
+  ticker := time.NewTicker(time.Millisecond * 5000)
   go func() {
     for _ = range ticker.C {
       DockerScanAllInstances(dockerClient, instanceUp)
@@ -112,7 +112,7 @@ func DockerIdentify(dockerId string) (bool, dockerManagedInstance) {
   fmt.Sscanf(parts[len(parts)-2], "v%d", &instance.version)
   instance.instanceType = parts[len(parts)-3]
 
-  if instance.instanceNumber == 0 || instance.instanceType == "" {
+  if instance.instanceNumber == 0 || instance.instanceType == "" || instance.version == 0 {
     return false, instance
   }
 
@@ -150,7 +150,7 @@ func InstanceUp(etcdClient *etcd.Client, instance dockerManagedInstance) {
   ipAndPort := fmt.Sprintf("%v:%v", instance.instanceIp, instance.instancePort)
   etcdKey   := EtcdKeyForInstance(instance)
 
-  if _, err := etcdClient.Set(etcdKey, ipAndPort, 10); err != nil {
+  if _, err := etcdClient.Set(etcdKey, ipAndPort, 20); err != nil {
     log.Print(err)
   }
 }
