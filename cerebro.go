@@ -25,7 +25,7 @@ type dockerManagedInstance struct {
 // FIXME
 
 func KnownAppNames() []string {
-  return []string{"pga-staging"}
+  return []string{"pga-staging", "pga-production"}
 }
 
 func ActiveReleaseVersion() int {
