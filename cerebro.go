@@ -5,7 +5,8 @@ import (
   "strings"
   "log"
   "time"
-  "net/http"
+  "os"
+  //"net/http"
   "github.com/gin-gonic/gin"
   "github.com/samalba/dockerclient"
   "github.com/coreos/go-etcd/etcd"
@@ -21,41 +22,54 @@ type dockerManagedInstance struct {
   instancePort int
 }
 
-func EtcdClient() *etcd.Client {
-  etcdMachines := []string{"http://127.0.0.1:2379"}
-  return etcd.NewClient(etcdMachines)
-}
-
-func DockerClient() *dockerclient.DockerClient {
-  docker, _ := dockerclient.NewDockerClient("tcp://127.0.0.1:2375", nil)
-  return docker
-}
+// FIXME
 
 func KnownAppNames() []string {
-  return []string{"pga"}
+  return []string{"pga-staging"}
 }
 
 func ActiveReleaseVersion() int {
-  return 123
+  return 1
 }
 
-func DockerEventCallback(event *dockerclient.Event, ec chan error, args ...interface{}) {
+// DOCKER
+
+func DockerClient() *dockerclient.DockerClient {
+  docker, _ := dockerclient.NewDockerClient(os.Getenv("DOCKER_ENDPOINT"), nil)
+  return docker
+}
+
+func DockerHandler(instanceUp chan<- dockerManagedInstance) {
+  dockerClient := DockerClient()
+
+  ticker := time.NewTicker(time.Millisecond * 1000)
+  go func() {
+    for _ = range ticker.C {
+      DockerScanAllInstances(dockerClient, instanceUp)
+    }
+  }()
+
+  // FIXME: How do pass arguments?
+  //dockerClient.StartMonitorEvents(DockerEventCallback, nil)
+}
+
+func DockerEventCallback(event *dockerclient.Event, ec chan error, instanceUp chan<- dockerManagedInstance, args ...interface{}) {
   log.Printf("Received event: %#v\n", *event)
 
   switch event.Status {
   case "start":
     if found, instance := DockerIdentify(event.Id); found {
-      DockerInstanceUp(instance)
+      instanceUp <- instance
     }
   case "die":
     // Note: We don't handle this for now since we have our TTL to expire dead containers
   }
 }
 
-func DockerScanAllInstances() {
+func DockerScanAllInstances(dockerClient *dockerclient.DockerClient, instanceUp chan<- dockerManagedInstance) {
   log.Printf("Scanning all instances...")
 
-  containers, err := DockerClient().ListContainers(true, false, "")
+  containers, err := dockerClient.ListContainers(true, false, "")
 
   if err != nil {
     log.Print("Failed to list docker containers")
@@ -64,7 +78,7 @@ func DockerScanAllInstances() {
 
   for _, container := range containers {
     if found, instance := DockerIdentify(container.Id); found {
-      DockerInstanceUp(instance)
+      instanceUp <- instance
     }
   }
 }
@@ -117,23 +131,38 @@ func DockerIdentify(dockerId string) (bool, dockerManagedInstance) {
   return true, instance
 }
 
+// ETCD STATE
+
+func EtcdClient() *etcd.Client {
+  etcdMachines := []string{os.Getenv("ETCD_ENDPOINT")}
+  return etcd.NewClient(etcdMachines)
+}
+
 func EtcdKeyForInstance(instance dockerManagedInstance) string {
   return fmt.Sprintf("/cerebro/%v/releases/%v/instances/%v/%v",
                      instance.appName, instance.version,
                      instance.instanceType, instance.instanceNumber)
 }
 
-func DockerInstanceUp(instance dockerManagedInstance) {
+func InstanceUp(etcdClient *etcd.Client, instance dockerManagedInstance) {
   log.Printf("%#v", instance)
 
   ipAndPort := fmt.Sprintf("%v:%v", instance.instanceIp, instance.instancePort)
   etcdKey   := EtcdKeyForInstance(instance)
 
-  if _, err := EtcdClient().Set(etcdKey, ipAndPort, 60); err != nil {
+  if _, err := etcdClient.Set(etcdKey, ipAndPort, 10); err != nil {
     log.Print(err)
   }
 }
 
+func ListenForInstanceUp(instanceUp <-chan dockerManagedInstance) {
+  etcdClient := EtcdClient()
+  for instance := range instanceUp {
+    InstanceUp(etcdClient, instance)
+  }
+}
+
+// OTHER
 func HandleAllInstancesUp() {
   // - Switches active load balancer config version
   // - SET /cerebro/APPNAME/release to VERSION
@@ -162,7 +191,7 @@ func CheckForNewRelease() {
 func main() {
   router := gin.Default()
 
-  router.GET("/", func(c *gin.Context) {
+  /*router.GET("/", func(c *gin.Context) {
     containers, err := DockerClient().ListContainers(true, false, "")
     if err != nil {
       log.Printf("Error: %#v\n", err)
@@ -171,16 +200,13 @@ func main() {
     for _, container := range containers {
       c.JSON(http.StatusOK, gin.H{"id": container.Id, "names": container.Names})
     }
-  })
+  })*/
 
-  ticker := time.NewTicker(time.Millisecond * 1000)
-  go func() {
-    for _ = range ticker.C {
-      DockerScanAllInstances()
-    }
-  }()
+  instanceUp := make(chan dockerManagedInstance)
 
-  DockerClient().StartMonitorEvents(DockerEventCallback, nil)
+  go ListenForInstanceUp(instanceUp)
 
-  router.Run(":8080")
+  go DockerHandler(instanceUp)
+
+  router.Run(":" + os.Getenv("PORT"))
 }

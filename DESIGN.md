@@ -8,8 +8,6 @@ tool that accesses a JSON API.
 
 ### Milestone 1: Replace discovery sidekick
 
-* [ ] Make sure etcd setup works
-* [ ] Solve global state issue (who owns the docker client connection?)
 * [ ] Modify nginx-lb to be cerebro-lb (read settings correctly, use release version)
 * [ ] Adjust fleet control files
 
