@@ -9,13 +9,20 @@ tool that accesses a JSON API.
 ### Milestone 1: Replace discovery sidekick
 
 * [ ] Modify nginx-lb to be cerebro-lb (read settings correctly, use release version)
-* [ ] Adjust fleet control files
-
-Deploy this to production (with correct naming) and run cerebro-lb at port 8080 for testing.
 
 ### Milestone 2: Deployment flow
 
-...
+* [ ] Figure out where to read out app names / current release
+* [ ] Health checks
+* [ ] State management
+* [ ] Switch release version when target version is state running
+* [ ] Fleet management (starting/stopping instances)
+
+### Milestone 3: Useful things
+
+* [ ] Command line tool to show current state
+* [ ] Easy changing of target instance count (using CLI)
+* ...
 
 ### etcd layout
 
@@ -34,7 +41,7 @@ docker name: APPNAME-PROC_TYPE-VERSION-INSTANCE_NUMBER (e.g. pga-staging-web-v21
 // Keep a log in etcd of the previous 4 releases and their docker IDs, so we can rollback if necessary
 
 
-### Thoughs
+### Thoughts
 
 // It is probably sensible to have one cerebro instance running on every CoreOS host (data kept in etcd)
 // cerebro is also responsible for syncing docker data into etcd (LB data)

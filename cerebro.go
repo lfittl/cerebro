@@ -40,10 +40,9 @@ func DockerClient() *dockerclient.DockerClient {
 }
 
 func DockerHandler(instanceUp chan<- dockerManagedInstance) {
-  dockerClient := DockerClient()
-
   ticker := time.NewTicker(time.Millisecond * 5000)
   go func() {
+    dockerClient := DockerClient()
     for _ = range ticker.C {
       DockerScanAllInstances(dockerClient, instanceUp)
     }
@@ -67,7 +66,7 @@ func DockerEventCallback(event *dockerclient.Event, ec chan error, instanceUp ch
 }
 
 func DockerScanAllInstances(dockerClient *dockerclient.DockerClient, instanceUp chan<- dockerManagedInstance) {
-  log.Printf("Scanning all instances...")
+  //log.Printf("Scanning all instances...")
 
   containers, err := dockerClient.ListContainers(true, false, "")
 
@@ -145,8 +144,6 @@ func EtcdKeyForInstance(instance dockerManagedInstance) string {
 }
 
 func InstanceUp(etcdClient *etcd.Client, instance dockerManagedInstance) {
-  log.Printf("%#v", instance)
-
   ipAndPort := fmt.Sprintf("%v:%v", instance.instanceIp, instance.instancePort)
   etcdKey   := EtcdKeyForInstance(instance)
 
