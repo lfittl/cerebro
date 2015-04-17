@@ -39,25 +39,25 @@ func DockerClient() *dockerclient.DockerClient {
   return docker
 }
 
-func DockerHandler(instanceUp chan<- dockerManagedInstance) {
-  ticker := time.NewTicker(time.Millisecond * 5000)
-  go func() {
-    dockerClient := DockerClient()
-    for _ = range ticker.C {
-      DockerScanAllInstances(dockerClient, instanceUp)
-    }
-  }()
+func DockerHandler(instanceUp chan<- *dockerManagedInstance) {
+  dockerClient := DockerClient()
 
   // FIXME: How do pass arguments?
   //dockerClient.StartMonitorEvents(DockerEventCallback, nil)
+
+  ticker := time.NewTicker(time.Millisecond * 5000)
+  for _ = range ticker.C {
+    DockerScanAllInstances(dockerClient, instanceUp)
+  }
 }
 
-func DockerEventCallback(event *dockerclient.Event, ec chan error, instanceUp chan<- dockerManagedInstance, args ...interface{}) {
+func DockerEventCallback(event *dockerclient.Event, ec chan error, instanceUp chan<- *dockerManagedInstance, args ...interface{}) {
   log.Printf("Received event: %#v\n", *event)
 
   switch event.Status {
   case "start":
-    if found, instance := DockerIdentify(event.Id); found {
+    instance := DockerIdentify(event.Id)
+    if instance != nil {
       instanceUp <- instance
     }
   case "die":
@@ -65,7 +65,7 @@ func DockerEventCallback(event *dockerclient.Event, ec chan error, instanceUp ch
   }
 }
 
-func DockerScanAllInstances(dockerClient *dockerclient.DockerClient, instanceUp chan<- dockerManagedInstance) {
+func DockerScanAllInstances(dockerClient *dockerclient.DockerClient, instanceUp chan<- *dockerManagedInstance) {
   //log.Printf("Scanning all instances...")
 
   containers, err := dockerClient.ListContainers(true, false, "")
@@ -76,19 +76,20 @@ func DockerScanAllInstances(dockerClient *dockerclient.DockerClient, instanceUp 
   }
 
   for _, container := range containers {
-    if found, instance := DockerIdentify(container.Id); found {
+    instance := DockerIdentify(container.Id)
+    if instance != nil {
       instanceUp <- instance
     }
   }
 }
 
-func DockerIdentify(dockerId string) (bool, dockerManagedInstance) {
-  instance := dockerManagedInstance{dockerId: dockerId}
+func DockerIdentify(dockerId string) (*dockerManagedInstance) {
+  instance := &dockerManagedInstance{dockerId: dockerId}
 
   containerInfo, err := DockerClient().InspectContainer(dockerId)
   if err != nil {
     log.Printf("%#v", err)
-    return false, instance
+    return nil
   }
 
   for _, appName := range KnownAppNames() {
@@ -99,12 +100,12 @@ func DockerIdentify(dockerId string) (bool, dockerManagedInstance) {
   }
 
   if instance.appName == "" {
-    return false, instance
+    return nil
   }
 
   parts := strings.Split(containerInfo.Name, "-")
   if len(parts) < 4 {
-    return false, instance
+    return nil
   }
 
   fmt.Sscanf(parts[len(parts)-1], "%d",  &instance.instanceNumber)
@@ -112,12 +113,12 @@ func DockerIdentify(dockerId string) (bool, dockerManagedInstance) {
   instance.instanceType = parts[len(parts)-3]
 
   if instance.instanceNumber == 0 || instance.instanceType == "" || instance.version == 0 {
-    return false, instance
+    return nil
   }
 
   if instance.version != ActiveReleaseVersion() {
     log.Printf("Found container with invalid release v%d", instance.version)
-    return false, instance
+    return nil
   }
 
   instance.instanceIp = containerInfo.NetworkSettings.IpAddress
@@ -127,7 +128,7 @@ func DockerIdentify(dockerId string) (bool, dockerManagedInstance) {
     break
   }
 
-  return true, instance
+  return instance
 }
 
 // ETCD STATE
@@ -137,13 +138,13 @@ func EtcdClient() *etcd.Client {
   return etcd.NewClient(etcdMachines)
 }
 
-func EtcdKeyForInstance(instance dockerManagedInstance) string {
+func EtcdKeyForInstance(instance *dockerManagedInstance) string {
   return fmt.Sprintf("/cerebro/%v/releases/%v/instances/%v/%v",
                      instance.appName, instance.version,
                      instance.instanceType, instance.instanceNumber)
 }
 
-func InstanceUp(etcdClient *etcd.Client, instance dockerManagedInstance) {
+func InstanceUp(etcdClient *etcd.Client, instance *dockerManagedInstance) {
   ipAndPort := fmt.Sprintf("%v:%v", instance.instanceIp, instance.instancePort)
   etcdKey   := EtcdKeyForInstance(instance)
 
@@ -152,7 +153,7 @@ func InstanceUp(etcdClient *etcd.Client, instance dockerManagedInstance) {
   }
 }
 
-func ListenForInstanceUp(instanceUp <-chan dockerManagedInstance) {
+func ListenForInstanceUp(instanceUp <-chan *dockerManagedInstance) {
   etcdClient := EtcdClient()
   for instance := range instanceUp {
     InstanceUp(etcdClient, instance)
@@ -199,7 +200,7 @@ func main() {
     }
   })*/
 
-  instanceUp := make(chan dockerManagedInstance)
+  instanceUp := make(chan *dockerManagedInstance)
 
   go ListenForInstanceUp(instanceUp)
 
