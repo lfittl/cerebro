@@ -43,7 +43,7 @@ docker name: APPNAME-PROC_TYPE-VERSION-INSTANCE_NUMBER (e.g. pga-staging-web-v21
 
 ### Thoughts
 
-// It is probably sensible to have one cerebro instance running on every CoreOS host (data kept in etcd)
-// cerebro is also responsible for syncing docker data into etcd (LB data)
-// cerebro manages the number of instances, i.e. using etcd makes sure the right number of instances is running across all hosts
-// optionally, cerebro API makes itself available using the load balancer - or you can conncet to any CoreOS host to access it
+* It is probably sensible to have one cerebro instance running on every CoreOS host (data kept in etcd)
+* cerebro is also responsible for syncing docker data into etcd (LB data)
+* cerebro manages the number of instances, i.e. using etcd makes sure the right number of instances is running across all hosts
+ optionally, cerebro API makes itself available using the load balancer - or you can conncet to any CoreOS host to access it
