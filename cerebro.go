@@ -47,7 +47,7 @@ func DockerHandler(instanceUp chan<- *dockerManagedInstance) {
 
   ticker := time.NewTicker(time.Millisecond * 5000)
   for _ = range ticker.C {
-    DockerScanAllInstances(dockerClient, instanceUp)
+    DockerScanInstances(dockerClient, instanceUp)
   }
 }
 
@@ -65,10 +65,8 @@ func DockerEventCallback(event *dockerclient.Event, ec chan error, instanceUp ch
   }
 }
 
-func DockerScanAllInstances(dockerClient *dockerclient.DockerClient, instanceUp chan<- *dockerManagedInstance) {
-  //log.Printf("Scanning all instances...")
-
-  containers, err := dockerClient.ListContainers(true, false, "")
+func DockerScanInstances(dockerClient *dockerclient.DockerClient, instanceUp chan<- *dockerManagedInstance) {
+  containers, err := dockerClient.ListContainers(false, false, "")
 
   if err != nil {
     log.Print("Failed to list docker containers")
