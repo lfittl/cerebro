@@ -119,7 +119,7 @@ func DockerIdentify(dockerId string) (*dockerManagedInstance) {
     return nil
   }
 
-  instance.instanceIp = containerInfo.NetworkSettings.IPAddress
+  instance.instanceIp = containerInfo.NetworkSettings.IpAddress
 
   for port := range containerInfo.NetworkSettings.Ports {
     fmt.Sscanf(strings.Split(port, "/")[0], "%d", &instance.instancePort)
